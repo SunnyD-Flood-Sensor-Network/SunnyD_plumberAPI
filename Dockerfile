@@ -1,4 +1,4 @@
-FROM rstudio/plumber:latest
+FROM rocker/r-ver:latest
 
 # system libraries of general use
 ## install debian packages
@@ -24,14 +24,16 @@ RUN apt-get update && \
 # install renv & restore packages
 RUN install2.r lubridate dplyr DBI RPostgres pool plumber dbplyr
 
-COPY plumber.R ./plumber.R
+RUN groupadd -r plumber && useradd --no-log-init -r -g plumber plumber
+
+ADD plumber.R /home/plumber/plumber.R
+ADD entrypoint.R /home/plumber/entrypoint.R
+
+# COPY plumber.R ./plumber.R
 
 EXPOSE 8000
+EXPOSE 5432
 
-USER 1001
-
-ENTRYPOINT ["R", "-e", \
-"plumber_api <- plumber::plumb('plumber.R'); \
-plumber_api$run(host = '0.0.0.0', port= 8000)"]
-
-CMD ["./plumber.R"]
+WORKDIR /home/plumber
+USER plumber
+CMD Rscript entrypoint.R
