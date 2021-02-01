@@ -20,6 +20,4 @@ sensor_id_list <- con %>%
   tbl("sensor_locations") %>%
   pull(sensor_ID)
 
-api_tokens <- c("bft_node1_EliqHXP!")
-
 pr("plumber.R") %>% pr_run(host='0.0.0.0', port = 8000)
