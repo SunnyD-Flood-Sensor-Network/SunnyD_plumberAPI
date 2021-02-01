@@ -20,4 +20,8 @@ sensor_id_list <- con %>%
   tbl("sensor_locations") %>%
   pull(sensor_ID)
 
+api_keys <- con %>%
+  tbl("api_keys") %>%
+  pull("keys")
+
 pr("plumber.R") %>% pr_run(host='0.0.0.0', port = 8000)
