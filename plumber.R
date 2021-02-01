@@ -1,7 +1,10 @@
 #* Read water level for sites
-#* @param token Auth token
+#* @param key API keys
+#* @param min_date Minimum date (mmddyyyy)
+#* @param max_date Maximum date (mmddyyyy)
+#* @param sensor_id Sensor ID (typically: site acronym, "_", number)
 #* @get /read_water_level
-function(token = "", min_date="", max_date="", sensor_id=""){
+function(key = "", min_date="", max_date="", sensor_id=""){
   min_date_parsed = lubridate::mdy(min_date)
   max_date_parsed = lubridate::mdy(max_date)
 
@@ -17,11 +20,11 @@ function(token = "", min_date="", max_date="", sensor_id=""){
     stop("sensor_id IS INVALID")
   }
 
-  if(!token %in% api_tokens){
-    stop("WRONG TOKEN!")
+  if(!key %in% api_keys){
+    stop("WRONG KEY!")
   }
 
-  if(token %in% api_tokens){
+  if(key %in% api_keys){
     con %>%
       tbl("sensor_data") %>%
       filter(sensor_ID %in% sensor_id,
@@ -31,9 +34,15 @@ function(token = "", min_date="", max_date="", sensor_id=""){
 }
 
 #* Write water level for sites
-#* @param token Auth token
+#* @param key API Key
+#* @param place City name, State name of location
+#* @param sensor_id Sensor ID
+#* @param dttm Datetime of sample (mmddyyyyhhmmss)
+#* @param level Water level relative to ground
+#* @param voltage Voltage of sensor
+#* @param notes Misc notes about sample
 #* @post /write_water_level
-function(token = "", place="", sensor_id="", dttm="", level="", voltage="", notes=""){
+function(key = "", place="", sensor_id="", dttm="", level="", voltage="", notes=""){
   date_parsed = lubridate::mdy_hms(dttm, tz = "EST")
 
   if(is.na(date_parsed)){
@@ -44,11 +53,11 @@ function(token = "", place="", sensor_id="", dttm="", level="", voltage="", note
     stop("sensor_id IS INVALID")
   }
 
-  if(!token %in% api_tokens){
-    stop("WRONG TOKEN!")
+  if(!key %in% api_keys){
+    stop("WRONG KEY!")
   }
 
-  if(token %in% api_tokens){
+  if(key %in% api_keys){
 
     dbAppendTable(conn = con,
                   name = "sensor_data",
