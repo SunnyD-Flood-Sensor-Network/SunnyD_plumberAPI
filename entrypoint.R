@@ -5,6 +5,9 @@ library(DBI)
 library(pool)
 library(plumber)
 library(dbplyr)
+library(magick)
+library(aws.s3)
+library(googledrive)
 
 # Connect to database
 con <- dbPool(
@@ -24,4 +27,13 @@ api_keys <- con %>%
   tbl("api_keys") %>%
   pull("keys")
 
+parser_jpeg <- function(...) {
+  parser_read_file(function(tmpfile) {
+    magick::image_read(tmpfile, ...)
+  })
+}
+register_parser("jpeg", parser_jpeg, fixed = c("image/jpeg", "image/jpg"))
+
+
 pr("plumber.R") %>% pr_run(host='0.0.0.0', port = 8000)
+

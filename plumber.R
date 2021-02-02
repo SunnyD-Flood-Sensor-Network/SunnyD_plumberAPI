@@ -104,3 +104,133 @@ function(key = "", place="", sensor_id="", dttm="", level="", voltage="", notes=
     )
   }
 }
+
+
+#--------------- testing file upload API --------------
+
+#* @post /upload_sensor_data_tsv
+#* @serializer text
+#* @parser multi
+#* @parser text
+#* @param key API key
+#* @param file:file A file
+#* Upload a tab-separated text file and save to database "sensor_data"
+function(key, file) {
+
+  if (key %in% api_keys) {
+    sanitizedFile <- gsub("\\W", "", file)
+
+    new_file <- tempfile()
+    writeLines(file[[1]], new_file)
+
+    df <- read_tsv(new_file)
+
+    if(!identical(colnames(df), colnames(con %>% tbl("sensor_data")))){
+      stop("ERROR: COLUMNS NAMES ARE NOT EQUAL. CHECK FILE STRUCTURE. IS IT A TAB-SEPARATED TEXT FILE?")
+    }
+
+    if(identical(colnames(df), colnames(con %>% tbl("sensor_data")))){
+
+      max_date_df <- con %>%
+        tbl("sensor_data") %>%
+        filter(sensor_ID %in% !!df$sensor_ID) %>%
+        # collect() %>%
+        group_by(sensor_ID) %>%
+        summarise(max_date = max(date, na.rm=T)) %>%
+        collect()
+
+      sensor_ID_list <- unique(df$sensor_ID)
+
+      filtered_df <- foreach(i=1:length(sensor_ID_list), .combine = "bind_rows") %do% {
+        df %>%
+          filter(sensor_ID == sensor_ID_list[i]) %>%
+          filter(date > max_date_df$max_date[max_date_df$sensor_ID == sensor_ID_list[i]])
+      }
+
+      if(is.null(filtered_df) | nrow(filtered_df) == 0){
+        stop("THE SUPPLIED .TXT FILE CONTAINS INFO ALREADY IN DATABSE")
+      }
+
+      if(!is.null(filtered_df) & nrow(filtered_df > 0)){
+        dbAppendTable(conn = con,
+                      name = "sensor_data",
+                      value = filtered_df
+        )
+        return("Success: wrote to table!")
+      }
+    }
+  }
+}
+
+#* @post /upload_pictures_postgres
+#* @parser multi
+#* @parser jpeg
+#* @param key API key
+#* @param file:file A file
+#* Upload a jpeg
+function(key, file) {
+
+  if (key %in% api_keys) {
+    sanitizedFile <- gsub("\\W", "", file)
+
+    new_file <- tempfile()
+    magick::image_write(file[[1]], new_file)
+
+    mg <- readBin(new_file, "raw", file.info(new_file)$size)
+    image_tibble <- tibble("metadata" = names(file), "picture" = list(mg))
+
+    dbAppendTable(conn = con,
+                  name = "test_pictures",
+                  value = image_tibble
+    )
+
+    unlink(new_file)
+    print("SUCCESS!")
+  }
+}
+
+
+#* @post /upload_pictures_googledrive
+#* @parser multi
+#* @parser jpeg
+#* @param key API key
+#* @param file:file A file
+#* Upload a jpeg
+function(key, file) {
+
+  if (key %in% api_keys) {
+    sanitizedFile <- gsub("\\W", "", file)
+
+    new_file <- paste0(tempfile(),".jpg")
+    magick::image_write(file[[1]], new_file)
+
+    googledrive::drive_upload(new_file, path = "~/test_pictures", name=names(file))
+
+    gc()
+    print("SUCCESS!")
+  }
+}
+
+
+#* @get /get_latest_picture_postgres
+#* @serializer jpeg
+#* @param key API key
+#* Get a jpeg from postgres
+function(key, filename) {
+
+  if (key %in% api_keys) {
+    new_file <- paste0(tempfile(),".jpg")
+
+    # as_attachment(con %>%
+    #                 tbl("test_pictures") %>%
+    #                 filter(metadata == filename) %>%
+    #                 collect() %>%
+    #                 pull(picture) %>%
+    #                 unlist() %>%
+    #                 magick::image_read() %>%
+    #                 magick::image_write(new_file), filename = filename)
+
+  }
+}
+
+
