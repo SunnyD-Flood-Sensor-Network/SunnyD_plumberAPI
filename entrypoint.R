@@ -1,3 +1,4 @@
+# Load Packages
 library(lubridate)
 library(dplyr)
 library(RPostgres)
@@ -6,10 +7,8 @@ library(pool)
 library(plumber)
 library(dbplyr)
 library(magick)
-library(aws.s3)
-library(googledrive)
 
-# Connect to database
+# Connect to database using secrets
 con <- dbPool(
   drv =RPostgres::Postgres(),
   dbname = Sys.getenv("POSTGRESQL_DATABASE"),
@@ -19,14 +18,20 @@ con <- dbPool(
   user = Sys.getenv("POSTGRESQL_USER")
 )
 
+# Get sensor IDs, Camera IDs, and valid API Keys
 sensor_id_list <- con %>%
   tbl("sensor_locations") %>%
   pull(sensor_ID)
+
+camera_id_list <- con %>%
+  tbl("camera_locations") %>%
+  pull(camera_ID)
 
 api_keys <- con %>%
   tbl("api_keys") %>%
   pull("keys")
 
+# Create a parser to intake .jpegs or .jpgs
 parser_jpeg <- function(...) {
   parser_read_file(function(tmpfile) {
     magick::image_read(tmpfile, ...)
@@ -34,6 +39,6 @@ parser_jpeg <- function(...) {
 }
 register_parser("jpeg", parser_jpeg, fixed = c("image/jpeg", "image/jpg"))
 
-
+# Run plumber.R and accept input on port 8000
 pr("plumber.R") %>% pr_run(host='0.0.0.0', port = 8000)
 

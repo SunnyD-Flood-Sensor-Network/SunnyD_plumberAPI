@@ -14,7 +14,8 @@ RUN apt-get update -qq && apt-get -y --no-install-recommends install \
     libssl-dev \
     libudunits2-dev \
     libgdal-dev \
-    odbc-postgresql
+    odbc-postgresql \
+    libmagick++-dev
 
 ## update system libraries
 RUN apt-get update && \
@@ -22,15 +23,13 @@ RUN apt-get update && \
     apt-get clean
 
 # install renv & restore packages
-RUN install2.r lubridate dplyr DBI RPostgres pool plumber dbplyr
+RUN install2.r lubridate dplyr DBI RPostgres pool plumber dbplyr magick raster
 
 RUN groupadd -r plumber && useradd --no-log-init -r -g plumber plumber
 
 ADD plumber.R /home/plumber/plumber.R
 ADD entrypoint.R /home/plumber/entrypoint.R
-
-# COPY plumber.R ./plumber.R
-
+COPY pictures /data
 EXPOSE 8000
 EXPOSE 5432
 

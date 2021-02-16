@@ -1,8 +1,11 @@
 #* @apiTitle SunnyD Flooding API
 #* @apiDescription This API contains functions for the SunnyD Flooding project, which measures and models urban coastal flooding
 #* @apiContact list(name = "API Support", email = "gold@unc.edu")
-#* @apiVersion 1.0.0
+#* @apiVersion 1.0.1
 
+#----------------- Expose mounted storage "/data" as the "public folder" that will store images sent to API
+#* @assets /data
+list()
 
 #------------------ Read water level ----------------
 #* Read water level for sites
@@ -102,12 +105,12 @@ function(key = "", place="", sensor_id="", dttm="", level="", voltage="", notes=
                     "notes" = notes
                   )
     )
+    return("SUCCESS!")
   }
 }
 
 
-#--------------- testing file upload API --------------
-
+#--------------- Upload tab separated file of values --------------
 #* @post /upload_sensor_data_tsv
 #* @serializer text
 #* @parser multi
@@ -124,6 +127,7 @@ function(key, file) {
     writeLines(file[[1]], new_file)
 
     df <- read_tsv(new_file)
+    unlink(new_file)
 
     if(!identical(colnames(df), colnames(con %>% tbl("sensor_data")))){
       stop("ERROR: COLUMNS NAMES ARE NOT EQUAL. CHECK FILE STRUCTURE. IS IT A TAB-SEPARATED TEXT FILE?")
@@ -162,75 +166,39 @@ function(key, file) {
   }
 }
 
-#* @post /upload_pictures_postgres
+#------------------------- Upload .jpegs or .jpgs -----------------------
+#* @post /upload_picture
 #* @parser multi
 #* @parser jpeg
 #* @param key API key
 #* @param file:file A file
 #* Upload a jpeg
-function(key, file) {
+function(key, camera_ID, file) {
 
-  if (key %in% api_keys) {
-    sanitizedFile <- gsub("\\W", "", file)
+  if (key %in% api_keys & camera_ID %in% camera_id_list) {
 
-    new_file <- tempfile()
+    new_file <- tempfile(fileext = ".jpg")
     magick::image_write(file[[1]], new_file)
 
-    mg <- readBin(new_file, "raw", file.info(new_file)$size)
-    image_tibble <- tibble("metadata" = names(file), "picture" = list(mg))
-
-    dbAppendTable(conn = con,
-                  name = "test_pictures",
-                  value = image_tibble
-    )
-
-    unlink(new_file)
-    print("SUCCESS!")
-  }
-}
-
-
-#* @post /upload_pictures_googledrive
-#* @parser multi
-#* @parser jpeg
-#* @param key API key
-#* @param file:file A file
-#* Upload a jpeg
-function(key, file) {
-
-  if (key %in% api_keys) {
-    sanitizedFile <- gsub("\\W", "", file)
-
-    new_file <- paste0(tempfile(),".jpg")
-    magick::image_write(file[[1]], new_file)
-
-    googledrive::drive_upload(new_file, path = "~/test_pictures", name=names(file))
-
+    magick::image_write(file[[1]], paste0("/data/",camera_ID,".jpg"))
+    
     gc()
-    print("SUCCESS!")
+
+    # Future code for onedrive API here.
+
   }
 }
 
-
-#* @get /get_latest_picture_postgres
-#* @serializer jpeg
+#------------------------- Get info of latest picture for a site -----------------------
+#* @get /get_latest_picture_info
 #* @param key API key
-#* Get a jpeg from postgres
-function(key, filename) {
+#* Get latest picture info
+function(key, camera_ID) {
 
-  if (key %in% api_keys) {
-    new_file <- paste0(tempfile(),".jpg")
+  if (key %in% api_keys & camera_ID %in% camera_id_list) {
 
-    # as_attachment(con %>%
-    #                 tbl("test_pictures") %>%
-    #                 filter(metadata == filename) %>%
-    #                 collect() %>%
-    #                 pull(picture) %>%
-    #                 unlist() %>%
-    #                 magick::image_read() %>%
-    #                 magick::image_write(new_file), filename = filename)
-
-  }
+      return(file.info(paste0("/data/",camera_ID,".jpg"))$mtime)
+    }
 }
 
 
