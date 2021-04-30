@@ -103,7 +103,8 @@ function(key, place, sensor_id, dttm, timezone = "EST",pressure, voltage="", not
                     "seqNum" = seqNum,
                     "aX" = aX,
                     "aY" = aY,
-                    "aZ" = aZ
+                    "aZ" = aZ,
+                    "processed" = F
                   ),
                where_cols = c("place","sensor_ID","date"),
                skip_existing = T)
