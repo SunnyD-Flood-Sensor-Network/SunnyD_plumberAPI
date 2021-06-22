@@ -71,10 +71,11 @@ function(key, sensor_id){
 #* @param sensor_id Sensor ID
 #* @param dttm Datetime of sample (yyyymmddhhmmss)
 #* @param pressure Water pressure
+#* @param wtemp Water Temperature
 #* @param voltage Voltage of sensor
 #* @param notes Misc notes about sample
 #* @post /write_water_level
-function(key, place, sensor_id, dttm, timezone = "EST",pressure, voltage="", notes="", seqNum = "", aX = "", aY = "", aZ = ""){
+function(key, place, sensor_id, dttm, timezone = "EST",pressure, wtemp, voltage="", notes="", seqNum = "", aX = "", aY = "", aZ = ""){
   date_parsed = lubridate::with_tz(lubridate::ymd_hms(dttm, tz = timezone), tzone = "UTC")
 
   if(is.na(date_parsed)){
@@ -98,6 +99,7 @@ function(key, place, sensor_id, dttm, timezone = "EST",pressure, voltage="", not
                     "sensor_ID" = sensor_id,
                     "date" = date_parsed,
                     "pressure" = pressure,
+                    "wtemp" = wtemp,
                     "voltage" = voltage,
                     "notes" = notes,
                     "seqNum" = seqNum,
