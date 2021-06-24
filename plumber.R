@@ -134,3 +134,182 @@ function(key) {
                 copy = T))
   }
 }
+
+#------------------------ recalculate data ---------------------
+#* @post /reanalyze_data
+#* @param key API key
+#* @param place ex: Beaufort, North Carolina
+#* @param sensor_id ex: BF_02
+#* @param start_time format: yyyymmddhhmmss
+#* @param end_time format: yyyymmddhhmmss
+#* @param time_zone default:America/New_York (EST/EDT)
+#* This function tags the raw data in the provided time span so it is re-analyzed by our monitoring script that runs every 6 minutes. The monitoring script updates processed data table with the re-analyzed data.
+function(key, place, sensor_id, start_time, end_time, time_zone = "America/New_York"){
+  if(!key %in% api_keys){
+    stop("WRONG KEY!")
+  }
+
+  if (key %in% api_keys) {
+    parsed_start_date <- lubridate::ymd_hms(start_time, tz = time_zone)
+    parsed_end_date <- lubridate::ymd_hms(end_time, tz = time_zone)
+
+    data_to_analyze <- con %>%
+      tbl("sensor_data") %>%
+      filter(place == !!place,
+             sensor_ID == sensor_id) %>%
+      filter(date >= parsed_start_date & date < parsed_end_date) %>%
+      collect() %>%
+      mutate(processed = F)
+
+    dbx::dbxUpdate(conn = con,
+                   table="sensor_data",
+                   records = data_to_analyze,
+                   where_cols = c("place", "sensor_ID", "date")
+    )
+
+    rm(data_to_analyze)
+
+    return("SUCCESS!")
+  }
+}
+
+#------------------- Edit sensor location functions ------------------------
+#* @get /get_sensor_info
+#* @param key API key
+#* @param place ex: Beaufort, North Carolina
+#* @param sensor_id ex: BF_02
+#* Get info for sensor locations. To return all sensor, leave 'place' and 'sensor_id' blank. To return all sensors for a 'place', leave just 'sensor_id' blank.
+function(key, place = NA, sensor_id = NA){
+  if(!key %in% api_keys){
+    stop("WRONG KEY!")
+  }
+
+  if (key %in% api_keys) {
+      if(is.na(place) & is.na(sensor_id)){
+        return(
+          con %>%
+            tbl("sensor_locations") %>%
+            collect()
+        )
+      }
+
+    if(is.na(sensor_id) & !is.na(place)){
+      return(
+        con %>%
+          tbl("sensor_locations") %>%
+          filter(place == !!place) %>%
+          collect()
+      )
+    }
+
+    if(!is.na(place) & !is.na(sensor_id)){
+      return(
+        con %>%
+          tbl("sensor_locations") %>%
+          filter(place == !!place & sensor_id == sensor_ID) %>%
+          collect()
+      )
+    }
+  }
+}
+
+#* @post /create_sensor
+#* @param key API key
+#* @param place ex: Beaufort, North Carolina
+#* @param sensor_id ex: BF_02
+#* @param lng
+#* @param lat
+#* @param sensor_elevation in ft NAVD88
+#* @param road_elevation in ft NAVD88
+#* @param alert_offset Depth below road_elevation to trigger flood alerts. Default is 0.5 ft below road
+#* @param notes
+#* Create a new sensor location
+function(key, place, sensor_id, lng, lat, sensor_elevation, road_elevation, alert_offset = 0.5, notes = ""){
+  if(!key %in% api_keys){
+    stop("WRONG KEY!")
+  }
+  if (key %in% api_keys) {
+    site_info <- tibble::tibble(
+      "place" = place,
+      "sensor_ID" = sensor_id,
+      "lng" = as.numeric(lng),
+      "lat" = as.numeric(lat),
+      "sensor_elevation" = as.numeric(sensor_elevation),
+      "road_elevation" = as.numeric(road_elevation),
+      "alert_threshold" = as.numeric(road_elevation) - as.numeric(alert_offset),
+      "notes" = notes
+    )
+
+    dbx::dbxUpsert(conn = con,
+                   table = "sensor_locations",
+                   records = site_info,
+                   where_cols = c("place","sensor_ID"),
+                   skip_existing = T)
+
+    rm(site_info)
+
+    return(paste("SUCCESS!", "Created new sensor: ",sensor_id))
+
+  }
+}
+
+#* @post /edit_sensor
+#* @param key API key
+#* @param place ex: Beaufort, North Carolina
+#* @param sensor_id ex: BF_02
+#* @param lng
+#* @param lat
+#* @param sensor_elevation
+#* @param road_elevation
+#* @param alert_offset
+#* @param notes
+#* Edit a sensor location. Fill in only the attributes you wish to change
+function(key, place, sensor_id, lng = NA, lat = NA, sensor_elevation = NA, road_elevation = NA, alert_offset = NA, notes = NA){
+  if(!key %in% api_keys){
+    stop("WRONG KEY!")
+  }
+  if (key %in% api_keys) {
+    new_info <- tibble::tibble(
+      "place" = place,
+      "sensor_ID" = sensor_id,
+      "lng" = as.numeric(lng),
+      "lat" = as.numeric(lat),
+      "sensor_elevation" = as.numeric(sensor_elevation),
+      "road_elevation" = as.numeric(road_elevation),
+      "notes" = notes
+    ) %>%
+      mutate(alert_threshold = road_elevation - as.numeric(alert_offset)) %>%
+      select_if(~any(!is.na(.)))
+
+    changed_cols <-  colnames(new_info)[!colnames(new_info) %in% c("place","sensor_ID")]
+
+    dbx::dbxUpsert(conn = con,
+                   table = "sensor_locations",
+                   records = new_info,
+                   where_cols = c("place","sensor_ID"),
+                   skip_existing = F)
+    rm(new_info)
+
+    return(paste("SUCCESS!", "Edited",sensor_id,"column(s):", changed_cols))
+
+  }
+}
+
+# #* @post /delete_sensor
+# #* @param key API key
+# #* @param place ex: Beaufort, North Carolina
+# #* @param sensor_id ex: BF_02
+# #* Delete a sensor location. One at a time.
+# function(key, place = "Beaufort, North Carolina", sensor_id){
+#   if (key %in% api_keys) {
+#     sensor_to_delete <- con %>%
+#       tbl("sensor_locations") %>%
+#       filter(place == !!place & sensor_id == sensor_ID) %>%
+#       collect()
+#
+#     dbx::dbxDelete(conn = con,
+#                    table = "sensor_locations",
+#                    where = sensor_to_delete)
+#     return(paste("SUCCESS!", sensor_id, "deleted"))
+#   }
+# }
