@@ -223,8 +223,9 @@ function(key, place = NA, sensor_id = NA){
 #* @param road_elevation in ft NAVD88
 #* @param alert_offset Depth below road_elevation to trigger flood alerts. Default is 0.5 ft below road
 #* @param notes
+#* @param date_surveyed Date of last survey in YYYYMMDDHHMMSS. Just put in the date and use zeros for hms. Ex: 20211210000000 for Dec 10th, 2021.
 #* Create a new sensor location
-function(key, place, sensor_id, lng, lat, sensor_elevation, road_elevation, alert_offset = 0.5, notes = ""){
+function(key, place, sensor_id, lng, lat, sensor_elevation, road_elevation, alert_offset = 0.5, notes = "", date_surveyed){
   if(!key %in% api_keys){
     stop("WRONG KEY!")
   }
@@ -237,7 +238,8 @@ function(key, place, sensor_id, lng, lat, sensor_elevation, road_elevation, aler
       "sensor_elevation" = as.numeric(sensor_elevation),
       "road_elevation" = as.numeric(road_elevation),
       "alert_threshold" = as.numeric(road_elevation) - as.numeric(alert_offset),
-      "notes" = notes
+      "notes" = notes,
+      "date_surveyed" = lubridate::ymd_hms(date_surveyed)
     )
 
     dbx::dbxUpsert(conn = con,
@@ -263,8 +265,10 @@ function(key, place, sensor_id, lng, lat, sensor_elevation, road_elevation, aler
 #* @param road_elevation
 #* @param alert_offset
 #* @param notes
+#* @param date_surveyed Date of last survey in YYYYMMDDHHMMSS. Just put in the date and use zeros for hms. Ex: 20211210000000 for Dec 10th, 2021.
+#* Create a new sensor location
 #* Edit a sensor location. Fill in only the attributes you wish to change
-function(key, place, sensor_id, lng = NA, lat = NA, sensor_elevation = NA, road_elevation = NA, alert_offset = NA, notes = NA){
+function(key, place, sensor_id, lng = NA, lat = NA, sensor_elevation = NA, road_elevation = NA, alert_offset = NA, notes = NA, date_surveyed = NA){
   if(!key %in% api_keys){
     stop("WRONG KEY!")
   }
