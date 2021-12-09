@@ -7,7 +7,7 @@ library(pool)
 library(plumber)
 library(dbplyr)
 
-# source("C:/Users/Adam Gold/Desktop/postgres_keys.R")
+# source("/Users/adam/Documents/SunnyD/sunnyday_postgres_keys.R")
 
 # Connect to database
 con <- dbPool(
