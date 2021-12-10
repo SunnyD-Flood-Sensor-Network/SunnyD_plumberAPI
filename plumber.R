@@ -280,7 +280,8 @@ function(key, place, sensor_id, lng = NA, lat = NA, sensor_elevation = NA, road_
       "lat" = as.numeric(lat),
       "sensor_elevation" = as.numeric(sensor_elevation),
       "road_elevation" = as.numeric(road_elevation),
-      "notes" = notes
+      "notes" = notes,
+      "date_surveyed" = lubridate::ymd_hms(date_surveyed)
     ) %>%
       mutate(alert_threshold = road_elevation - as.numeric(alert_offset)) %>%
       select_if(~any(!is.na(.)))
