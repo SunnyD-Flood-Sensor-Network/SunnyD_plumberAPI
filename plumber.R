@@ -95,8 +95,8 @@ function(key, place, sensor_id, dttm, timezone = "EST",pressure, wtemp, voltage=
     dbx::dbxUpsert(conn = con,
                table = "sensor_data",
                records = tibble::tibble(
-                    "place" = place,
-                    "sensor_ID" = sensor_id,
+                    "place" = tools::toTitleCase(place),
+                    "sensor_ID" = toupper(sensor_id),
                     "date" = date_parsed,
                     "pressure" = pressure,
                     "wtemp" = wtemp,
@@ -128,7 +128,7 @@ function(key) {
       tbl("sensor_locations") %>%
       collect() %>%
       left_join(con %>%
-                  tbl("sensor_data") %>%
+                  tbl("sensor_data_drift_corrected") %>%
                   group_by(sensor_ID) %>%
                   filter(date == max(date, na.rm = T)),
                 copy = T))
